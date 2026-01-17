@@ -1,0 +1,42 @@
+# Core dependencies
+qdrant-client>=1.7.0
+fastembed>=0.2.0
+tavily-python>=0.3.0
+
+# LangChain/LangGraph for multi-agent orchestration
+langgraph>=0.1.0
+langchain>=0.1.0
+langchain-core>=0.1.0
+
+# LLM APIs
+groq>=0.4.0
+google-generativeai>=0.3.0
+
+# Embeddings and ML
+transformers>=4.36.0
+torch>=2.1.0
+sentence-transformers>=2.2.0
+
+# Image processing
+Pillow>=10.1.0
+clip-interrogator>=0.6.0
+
+# Web framework
+streamlit>=1.29.0
+fastapi>=0.108.0
+uvicorn>=0.25.0
+
+# Data processing
+pandas>=2.1.4
+numpy>=1.24.0
+datasets>=2.16.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+httpx>=0.26.0
+requests>=2.31.0
+tqdm>=4.66.0
+
+# Date/time handling
+python-dateutil>=2.8.2
