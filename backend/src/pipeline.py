@@ -4,10 +4,13 @@ Connects all agents into a coherent workflow for claim verification.
 Includes intelligent caching: check memory first, then web search if needed.
 """
 
+import logging
 from typing import TypedDict, Optional
 from datetime import datetime, timedelta
 
 from langgraph.graph import StateGraph, END
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineState(TypedDict):
@@ -67,9 +70,9 @@ def create_pipeline():
     try:
         from src.agents.web_search import WebSearchAgent
         web_search_agent = WebSearchAgent()
-        print("✅ Web search enabled (Tavily)")
+        logger.info("Web search enabled (Tavily)")
     except Exception as e:
-        print(f"⚠️ Web search disabled: {e}")
+        logger.warning(f"Web search disabled: {e}")
     
     def normalize_node(state: PipelineState) -> PipelineState:
         """Normalize the input claim."""

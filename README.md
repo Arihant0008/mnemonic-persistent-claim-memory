@@ -2,20 +2,30 @@
 
 Modern Next.js-powered misinformation detection system with persistent claim memory and multi-agent verification pipeline.
 
+## � Repository Structure
+
+```
+pmc-opus-anti/
+├── frontend/          # Next.js application → Deploy to Vercel
+├── backend/           # FastAPI server → Deploy to Render
+├── README.md          # This file
+├── ARCHITECTURE.md    # System design
+└── docs/              # Additional documentation
+```
+
 ## 📖 Documentation Index
 
 **New to the project?** Start here:
-1. **[SETUP.md](SETUP.md)** - Step-by-step API key setup and troubleshooting
-2. **[README.md](README.md)** (this file) - Quick start guide
-3. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Visual diagrams and system flow
+1. **[frontend/README.md](frontend/README.md)** - Frontend setup & Vercel deployment
+2. **[backend/README.md](backend/README.md)** - Backend setup & Render deployment
+3. **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
+
+**For deployment:**
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment guide
+- **[SPLIT_DEPLOYMENT.md](SPLIT_DEPLOYMENT.md)** - Platform-specific instructions
 
 **For judges/reviewers:**
-- **[JUDGE_SUMMARY.md](JUDGE_SUMMARY.md)** - Executive summary with innovation highlights
-
-**For developers:**
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete production deployment architecture
-- [docs/ARCHITECTURE_PROFESSIONAL.md](docs/ARCHITECTURE_PROFESSIONAL.md) - Technical deep dive
-- [docs/THRESHOLDS.md](docs/THRESHOLDS.md) - Empirical justification for all parameters
+- **[JUDGE_SUMMARY.md](JUDGE_SUMMARY.md)** - Executive summary
 
 ---
 
@@ -30,6 +40,8 @@ Modern Next.js-powered misinformation detection system with persistent claim mem
 
 ## 🏗️ Architecture
 
+**This project supports SPLIT DEPLOYMENT** - Frontend and backend can be deployed independently to different platforms (e.g., Vercel for frontend, Railway for backend). See [SPLIT_DEPLOYMENT.md](SPLIT_DEPLOYMENT.md) for details.
+
 **Backend:**
 - FastAPI server (port 8000)
 - Groq Llama 3.1 8B for reasoning
@@ -42,6 +54,8 @@ Modern Next.js-powered misinformation detection system with persistent claim mem
 - Tailwind CSS + shadcn/ui
 - Real-time API integration
 
+**Communication:** Frontend → Backend via HTTP API with CORS configuration
+
 ## 📋 Prerequisites
 
 - **Python**: 3.10+
@@ -53,23 +67,55 @@ Modern Next.js-powered misinformation detection system with persistent claim mem
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Local Development
 
+**Terminal 1: Backend**
 ```bash
-# Python backend
+cd backend
 pip install -r requirements.txt
-
-# Next.js frontend
-pnpm install
+cp .env.example .env
+# Edit .env with your API keys
+uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
 ```
+
+**Terminal 2: Frontend**
+```bash
+cd frontend
+pnpm install
+cp .env.example .env.local
+# Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000
+pnpm dev
+```
+
+Open http://localhost:3000
+
+### Production Deployment
+
+**1. Deploy Backend to Render**
+- Root Directory: `backend`
+- Build: `pip install -r requirements.txt`
+- Start: `uvicorn api_server:app --host 0.0.0.0 --port $PORT`
+- Add environment variables (see [backend/README.md](backend/README.md))
+
+**2. Deploy Frontend to Vercel**
+- Root Directory: `frontend`
+- Set `NEXT_PUBLIC_API_URL` to your Render backend URL
+- Deploy (Vercel auto-detects Next.js)
+
+**3. Update Backend CORS**
+- Set `CORS_ORIGINS` in Render to your Vercel URL
+- Redeploy backend
+
+📖 **Detailed guide**: See [frontend/README.md](frontend/README.md) and [backend/README.md](backend/README.md)
 
 ### 2. Configure Environment
 
 See **[SETUP.md](SETUP.md)** for detailed API key setup instructions.
 
+**Backend Environment:**
 ```bash
-# Copy and edit environment variables
-cp .env.example .env
+# Copy and edit backend environment
+cp .env.backend.example .env
 ```
 
 Edit `.env` with your API keys:
@@ -78,11 +124,19 @@ GROQ_API_KEY=your_groq_key              # Required - Get from console.groq.com
 QDRANT_URL=your_qdrant_url              # Required - Get from cloud.qdrant.io
 QDRANT_API_KEY=your_qdrant_key          # Required
 TAVILY_API_KEY=your_tavily_key          # Optional - Get from tavily.com
+CORS_ORIGINS=http://localhost:3000      # Must match frontend URL
+LOG_LEVEL=INFO                          # INFO for dev, WARNING for prod
 ```
 
-Also configure frontend:
+**Frontend Environment:**
 ```bash
-cp .env.example .env.local
+# Copy and edit frontend environment
+cp .env.frontend.example .env.local
+```
+
+Edit `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000  # Backend URL
 ```
 
 ### 3. Run the Application
@@ -99,86 +153,66 @@ pnpm dev
 ```
 Frontend runs on `http://localhost:3000`
 
+### Split Deployment (Production)
+
+For deploying frontend and backend to separate platforms:
+
+1. **Deploy Backend** (Railway, Render, Fly.io)
+   - See [BACKEND_README.md](BACKEND_README.md)
+   - Note your backend URL (e.g., `https://api.example.com`)
+
+2. **Deploy Frontend** (Vercel, Netlify)
+   - See [FRONTEND_README.md](FRONTEND_README.md)
+   - Set `NEXT_PUBLIC_API_URL` to your backend URL
+
+3. **Update Backend CORS**
+   - Set `CORS_ORIGINS` to your frontend URL
+   - Redeploy backend
+
+📖 **Full guide**: [SPLIT_DEPLOYMENT.md](SPLIT_DEPLOYMENT.md)
+
 ## 📁 Project Structure
 
 ```
 pmc-opus-anti/
-├── api_server.py           # FastAPI backend server
-├── cli.py                  # Command-line interface for memory management
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Main dashboard
-│   ├── layout.tsx         # Root layout
-│   └── globals.css        # Global styles
-├── components/            # React UI components
-│   ├── ui/               # shadcn/ui primitives
-│   ├── claim-input.tsx
-│   ├── decision-zone.tsx
-│   ├── reasoning-evidence.tsx
-│   ├── session-history.tsx
-│   └── system-status.tsx
-├── lib/                   # Frontend utilities
-│   ├── api.ts            # Backend API client
-│   ├── transform.ts      # Response transformers
-│   └── types.ts          # TypeScript types
-├── src/                   # Python backend
-│   ├── config.py         # Configuration
-│   ├── pipeline.py       # Main verification pipeline
-│   ├── data_ingestion.py # Data loading
-│   ├── validation.py     # Validation utilities
-│   └── agents/           # LangGraph agents
-│       ├── normalizer.py
-│       ├── retriever.py
-│       ├── web_search.py
-│       ├── reasoner.py
-│       └── memory.py
-├── data/                  # Data storage
-│   └── cache/            # Local cache
-└── docs/                  # Documentation
-    ├── ARCHITECTURE_SIMPLE.md
-    ├── ARCHITECTURE_PROFESSIONAL.md
-    └── THRESHOLDS.md
-```
-
-## 🔧 CLI Commands
-
-Manage the memory database using the CLI:
-
-```bash
-# View memory statistics
-python cli.py stats
-
-# Clear all memory (with confirmation)
-python cli.py clear
-
-# Clear without confirmation
-python cli.py clear --force
-
-# Ingest claims from CSV
-python cli.py ingest data/claims.csv
+├── frontend/                  # Next.js Application
+│   ├── app/                  # Next.js pages
+│   ├── components/           # React components
+│   ├── hooks/               # React hooks
+│   ├── lib/                 # API client & utilities
+│   ├── public/              # Static assets
+│   ├── styles/              # CSS styles
+│   ├── package.json
+│   └── next.config.mjs
+│
+├── backend/                   # FastAPI Server
+│   ├── api_server.py        # Entry point
+│   ├── src/                 # Core logic
+│   │   ├── pipeline.py      # Multi-agent pipeline
+│   │   ├── agents/          # Agent implementations
+│   │   └── config.py
+│   ├── data/                # Runtime data
+│   └── requirements.txt
+│
+└── docs/                     # Documentation
 ```
 
 ## 🌐 API Endpoints
 
-**Backend (FastAPI)**
-- `GET /` - Health check
-- `GET /health` - Detailed health status
+**Backend (FastAPI)** - Default: http://localhost:8000
+- `GET /health` - Health check
 - `POST /verify` - Verify a claim
-  ```json
-  {
-    "raw_text": "claim to verify"
-  }
-  ```
 
 Full API documentation: `http://localhost:8000/docs`
 
-## 🎨 Frontend Features
+## 📚 Frontend Features
 
 - **Claim Input**: Clean interface for submitting claims
 - **Decision Zone**: Visual verdict display with confidence scores
-- **Evidence Explorer**: View similar cached claims with similarity scores
+- **Evidence Explorer**: View similar cached claims
 - **Web Search Results**: Display fresh evidence from Tavily
-- **Reasoning Trace**: Step-by-step agent decision pipeline
-- **Session History**: Track all verifications in current session
+- **Reasoning Trace**: Step-by-step agent decisions
+- **Session History**: Track all verifications
 - **System Status**: Real-time backend health monitoring
 
 ## 🔒 Memory Thresholds
@@ -191,49 +225,54 @@ See [docs/THRESHOLDS.md](docs/THRESHOLDS.md) for details.
 
 ## 🧪 Development
 
+### Frontend
 ```bash
-# Frontend development
+cd frontend
 pnpm dev              # Start dev server with hot reload
 pnpm build            # Build for production
 pnpm start            # Start production server
+```
 
-# Backend development
-python api_server.py  # Start FastAPI with auto-reload
-
-# Type checking
-cd src && mypy .      # Python type checking
+### Backend
+```bash
+cd backend
+uvicorn api_server:app --reload  # Start with auto-reload
 ```
 
 ## 🐛 Troubleshooting
 
 **"API offline" error:**
-- Ensure `api_server.py` is running
-- Check `http://localhost:8000` is accessible
-- Verify `.env.local` has `NEXT_PUBLIC_API_URL=http://localhost:8000`
+- Ensure backend is running: `cd backend && uvicorn api_server:app --reload`
+- Check `http://localhost:8000/health`
+- Verify frontend `.env.local` has correct `NEXT_PUBLIC_API_URL`
 
 **Port conflicts:**
-- Next.js: 3000 (change with `pnpm dev -p 3001`)
-- FastAPI: 8000 (modify in `api_server.py`)
+- Frontend: 3000 (change with `pnpm dev -p 3001`)
+- Backend: 8000 (change with `uvicorn api_server:app --port 8001`)
 
 **CORS errors:**
-- Backend pre-configured for `localhost:3000`
-- Update CORS settings in `api_server.py` if using different port
+- Update `CORS_ORIGINS` in backend `.env`
+- Must match your frontend URL
 
-**Memory not persisting:**
-- Check Qdrant connection in `.env`
-- Verify collection exists: `python cli.py stats`
+**Import errors after restructure:**
+- Frontend: All imports should be relative to `frontend/`
+- Backend: All imports should work from `backend/` root
 
 ## 📚 Documentation
 
 ### Quick Start
-- **[JUDGE_SUMMARY.md](JUDGE_SUMMARY.md)** - Executive summary for judges/reviewers
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Visual diagrams and decision trees
+- **[frontend/README.md](frontend/README.md)** - Frontend setup & deployment
+- **[backend/README.md](backend/README.md)** - Backend setup & deployment
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
 
-### Technical Deep Dive
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete production architecture
-- [Professional Architecture](docs/ARCHITECTURE_PROFESSIONAL.md) - Technical deep dive
-- [Simple Architecture](docs/ARCHITECTURE_SIMPLE.md) - Beginner-friendly overview
-- [Memory Thresholds](docs/THRESHOLDS.md) - Empirical justification for all parameters
+### Deployment
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment guide
+- **[SPLIT_DEPLOYMENT.md](SPLIT_DEPLOYMENT.md)** - Platform-specific instructions
+
+### Additional Resources
+- [SETUP.md](SETUP.md) - API key setup
+- [docs/ARCHITECTURE_PROFESSIONAL.md](docs/ARCHITECTURE_PROFESSIONAL.md) - Technical deep dive
+- [docs/THRESHOLDS.md](docs/THRESHOLDS.md) - Parameter justification
 
 ## 📝 License
 

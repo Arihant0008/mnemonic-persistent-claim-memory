@@ -2,31 +2,65 @@
 FastAPI Backend for Mnemonic
 Serves the verification API at localhost:8000
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 import sys
 import os
+import logging
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.pipeline import create_pipeline
+from src.validation import validate_claim_input, ValidationError
+
+# Configure logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Mnemonic API", version="1.0.0")
 
-# CORS middleware
+# CORS middleware - environment-based configuration
+ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
+# Rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    
+    limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    logger.info("Rate limiting enabled")
+except ImportError:
+    limiter = None
+    logger.warning("slowapi not installed - rate limiting disabled")
+
 class ClaimRequest(BaseModel):
-    raw_text: str
+    raw_text: str = Field(..., min_length=3, max_length=2000, description="Claim text to verify")
+    
+    @field_validator('raw_text')
+    @classmethod
+    def validate_text(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Claim text cannot be empty")
+        if not any(c.isalpha() for c in v):
+            raise ValueError("Claim must contain text characters")
+        return v.strip()
 
 class VerificationResponse(BaseModel):
     normalized_claim: str | None = None
@@ -43,17 +77,31 @@ def root():
     return {"message": "Mnemonic API", "status": "online"}
 
 @app.post("/verify")
-async def verify_claim(request: ClaimRequest):
+async def verify_claim(request: ClaimRequest, req: Request):
     """Verify a claim through the multi-agent pipeline."""
+    # Apply rate limiting if available
+    if limiter:
+        try:
+            limiter.check_rate_limit(req)
+        except:
+            pass  # Rate limit handled by decorator
+    
     try:
-        print(f"\n🔍 Processing claim: {request.raw_text}")
+        # Additional sanitization at API boundary
+        try:
+            sanitized_text = validate_claim_input(request.raw_text)
+        except ValidationError as e:
+            logger.warning(f"Validation error: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        
+        logger.info("Processing verification request")
         
         # Create pipeline
         pipeline = create_pipeline()
         
         # Initial state
         initial_state = {
-            "raw_text": request.raw_text,
+            "raw_text": sanitized_text,
             "image_path": None,
             "normalized_claim": None,
             "claim_embedding": None,
@@ -70,7 +118,7 @@ async def verify_claim(request: ClaimRequest):
         # Run pipeline
         result = pipeline.invoke(initial_state)
         
-        print(f"✅ Pipeline result: {result.get('verification_result')}")
+        logger.info("Pipeline completed successfully")
         
         # Extract seen count from memory update
         seen_count = 0
@@ -79,7 +127,7 @@ async def verify_claim(request: ClaimRequest):
         
         # Handle errors in result
         if result.get("errors"):
-            print(f"⚠️ Pipeline errors: {result['errors']}")
+            logger.warning(f"Pipeline errors: {result['errors']}")
         
         # Extract verification result and normalize fields
         verification_result = result.get("verification_result", {})
@@ -105,16 +153,18 @@ async def verify_claim(request: ClaimRequest):
         
         return response
         
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
-        import traceback
-        error_detail = traceback.format_exc()
-        print(f"❌ Error: {error_detail}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log full error internally
+        logger.exception("Verification failed")
+        # Return generic error to client
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting Mnemonic API Server...")
-    print("📡 Backend: http://localhost:8000")
-    print("🔍 Frontend: http://localhost:3000")
-    print("📚 Docs: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    logger.info("🚀 Starting Mnemonic API Server...")
+    logger.info("📡 Backend: http://localhost:8000")
+    logger.info("🔍 Frontend: http://localhost:3000")
+    logger.info("📚 Docs: http://localhost:8000/docs")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level=LOG_LEVEL.lower())

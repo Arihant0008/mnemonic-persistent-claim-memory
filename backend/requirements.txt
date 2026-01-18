@@ -20,6 +20,7 @@ sentence-transformers>=2.2.0
 # Web framework (FastAPI only, Streamlit removed)
 fastapi>=0.108.0
 uvicorn>=0.25.0
+slowapi>=0.1.9
 
 # Data processing
 pandas>=2.1.4
