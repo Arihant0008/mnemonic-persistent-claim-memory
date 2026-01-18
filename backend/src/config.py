@@ -42,10 +42,10 @@ VISUAL_EMBEDDING_DIM = 512
 # These thresholds were empirically tested. See docs/THRESHOLDS.md for full justification.
 
 # Deduplication threshold: When storing a new claim, we check if a near-identical
-# claim exists. If similarity >= 0.92, we UPDATE the existing record instead of
-# creating a duplicate. Very strict to avoid merging different claims.
-# Example: "vaccines autism" vs "vaccines cancer" = 0.87 (should NOT merge)
-SIMILARITY_THRESHOLD = 0.92
+# claim exists. If similarity >= 0.90, we UPDATE the existing record instead of
+# creating a duplicate. Lowered from 0.92 to better catch paraphrases and typos.
+# Example: "Kamala Harris is president" vs "Kamla harris is the president" = 0.93 (should merge)
+SIMILARITY_THRESHOLD = 0.90
 
 # Cache hit threshold: When a user submits a claim, if we find a match with
 # similarity >= 0.85 AND age <= 3 days, we skip web search and use cached verdict.
