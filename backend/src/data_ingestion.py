@@ -79,7 +79,7 @@ def load_fever_dataset(sample_size: int = FEVER_SAMPLE_SIZE) -> Generator[dict, 
                     "source": "FEVER",
                     "source_reliability": 0.9,
                     "topic": "general",
-                    "timestamp": generate_random_timestamp(365)
+                    "timestamp": generate_random_timestamp(7)
                 }
                 
     except Exception as e:
@@ -121,7 +121,7 @@ def load_liar_dataset(sample_size: int = LIAR_SAMPLE_SIZE) -> Generator[dict, No
                 "source": "LIAR-PolitiFact",
                 "source_reliability": 0.85,
                 "topic": "politics",
-                "timestamp": generate_random_timestamp(730)  # 2 years back
+                "timestamp": generate_random_timestamp(7)
             }
             
             count += 1
@@ -195,7 +195,7 @@ def get_fallback_claims() -> Generator[dict, None, None]:
             "source": "Curated-Facts",
             "source_reliability": 0.95,
             "topic": claim["topic"],
-            "timestamp": generate_random_timestamp(365)
+            "timestamp": generate_random_timestamp(7)
         }
 
 
