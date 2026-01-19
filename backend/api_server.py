@@ -17,7 +17,7 @@ from src.pipeline import create_pipeline
 from src.validation import validate_claim_input, ValidationError
 
 # Configure logging
-LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

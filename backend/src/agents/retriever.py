@@ -207,11 +207,10 @@ class RetrievalAgent:
         try:
             results = self.client.search(
                 collection_name=COLLECTION_NAME,
-                query_vector=query_embedding,
+                query_vector=("dense_text", query_embedding),
                 limit=k,
                 query_filter=query_filter,
-                with_payload=True,
-                using="dense_text"
+                with_payload=True
             )
             
             if not results:
@@ -254,10 +253,9 @@ class RetrievalAgent:
             # Fallback to regular search with best-effort semantic matching
             results = self.client.search(
                 collection_name=COLLECTION_NAME,
-                query_vector=query_embedding,
+                query_vector=("dense_text", query_embedding),
                 limit=k,
-                with_payload=True,
-                using="dense_text"
+                with_payload=True
             )
             
             if not results:
@@ -292,10 +290,9 @@ class RetrievalAgent:
         try:
             results = self.client.search(
                 collection_name=COLLECTION_NAME,
-                query_vector=image_embedding,
+                query_vector=("visual", image_embedding),
                 limit=k,
-                with_payload=True,
-                using="visual"
+                with_payload=True
             )
             
             if not results:
@@ -327,10 +324,18 @@ class RetrievalAgent:
         Returns:
             The matching claim if found, None otherwise
         """
+        logger.info(f"Checking for similar claim: '{query_text}' (threshold: {threshold})")
         results = self.search(query_text, k=1, apply_time_decay=False)
         
-        if results and results[0].similarity_score >= threshold:
-            return results[0]
+        if results:
+            logger.info(f"Top result: similarity={results[0].similarity_score:.3f}, claim='{results[0].claim_text}'")
+            if results[0].similarity_score >= threshold:
+                logger.info(f"Match found! Returning existing claim")
+                return results[0]
+            else:
+                logger.info(f"Similarity too low ({results[0].similarity_score:.3f} < {threshold})")
+        else:
+            logger.info("No results returned from search")
         
         return None
     

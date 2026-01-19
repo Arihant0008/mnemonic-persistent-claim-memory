@@ -136,6 +136,12 @@ class MemoryUpdateAgent:
             threshold=SIMILARITY_THRESHOLD
         )
         
+        # Debug logging
+        if existing:
+            logger.info(f"Found similar claim with similarity {existing.similarity_score:.3f} (threshold: {SIMILARITY_THRESHOLD})")
+        else:
+            logger.info(f"No similar claim found above threshold {SIMILARITY_THRESHOLD}")
+        
         now = datetime.now().isoformat()
         
         if existing:
