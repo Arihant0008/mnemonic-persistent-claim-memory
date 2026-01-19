@@ -230,6 +230,12 @@ class RetrievalAgent:
                 
         except Exception as e:
             logger.error(f"Search error: {e}")
+            try:
+                # Debug helper: print available methods if search fails
+                logger.error(f"Client type: {type(self.client)}")
+                logger.error(f"Available attributes: {[x for x in dir(self.client) if not x.startswith('_')]}")
+            except:
+                pass
             return []
     
     def discovery_search(
