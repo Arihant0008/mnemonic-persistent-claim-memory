@@ -73,7 +73,7 @@ export function SystemStatus() {
                 <h4 className="text-sm font-medium text-foreground">Verification API</h4>
                 <p className="text-xs text-muted-foreground">
                   {apiStatus === "online" 
-                    ? "Core verification pipeline at localhost:8000" 
+                    ? "Core verification pipeline" 
                     : apiStatus === "offline"
                     ? errorMessage
                     : "Checking connection..."}
@@ -121,7 +121,7 @@ export function SystemStatus() {
               variant="outline"
               size="sm"
               className="gap-2 bg-transparent"
-              onClick={() => window.open("http://localhost:8000/docs", "_blank")}
+              onClick={() => window.open("https://claim-memory-engine-for-repeated-content.onrender.com/docs", "_blank")}
             >
               View Docs
               <ExternalLink className="w-3.5 h-3.5" />
