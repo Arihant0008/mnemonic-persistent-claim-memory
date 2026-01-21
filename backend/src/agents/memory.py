@@ -22,6 +22,17 @@ from .reasoner import VerificationResult
 
 logger = logging.getLogger(__name__)
 
+# Singleton embedding model to prevent memory leaks
+_embedding_model_cache = None
+
+def get_shared_embedding_model():
+    """Get or create shared embedding model instance."""
+    global _embedding_model_cache
+    if _embedding_model_cache is None:
+        logger.info(f"Initializing shared embedding model: {TEXT_EMBEDDING_MODEL}")
+        _embedding_model_cache = TextEmbedding(TEXT_EMBEDDING_MODEL)
+    return _embedding_model_cache
+
 
 @dataclass
 class MemoryUpdateResult:
@@ -39,10 +50,10 @@ class MemoryUpdateAgent:
     Handles deduplication, updates, and insertions.
     """
     
-    def __init__(self):
+    def __init__(self, embed_model=None, retriever=None):
         self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        self.embed_model = TextEmbedding(TEXT_EMBEDDING_MODEL)
-        self.retriever = RetrievalAgent()
+        self.embed_model = embed_model or get_shared_embedding_model()
+        self.retriever = retriever or RetrievalAgent(embed_model=self.embed_model)
     
     def _get_embedding(self, text: str) -> list[float]:
         """Generate embedding for a single text."""

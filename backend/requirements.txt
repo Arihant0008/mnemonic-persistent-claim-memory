@@ -33,6 +33,7 @@ pydantic>=2.5.0
 httpx>=0.26.0
 requests>=2.31.0
 tqdm>=4.66.0
+psutil>=5.9.0  # Memory monitoring
 
 # Date/time handling
 python-dateutil>=2.8.2

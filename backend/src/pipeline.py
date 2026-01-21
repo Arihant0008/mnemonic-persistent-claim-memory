@@ -12,6 +12,9 @@ from langgraph.graph import StateGraph, END
 
 logger = logging.getLogger(__name__)
 
+# Cache agent instances to prevent recreation and memory leaks
+_agent_cache = {}
+
 
 class PipelineState(TypedDict):
     """State that flows through the pipeline."""
@@ -56,23 +59,34 @@ def create_pipeline():
     from src.agents.normalizer import ClaimNormalizer
     from src.agents.retriever import RetrievalAgent
     from src.agents.reasoner import ReasoningAgent
-    from src.agents.memory import MemoryUpdateAgent
+    from src.agents.memory import MemoryUpdateAgent, get_shared_embedding_model
     from src.config import CACHE_HIT_THRESHOLD, CACHE_MAX_AGE_DAYS
     
-    # Initialize agents
-    normalizer = ClaimNormalizer()
-    retriever = RetrievalAgent()
-    reasoner = ReasoningAgent()
-    memory_agent = MemoryUpdateAgent()
+    # Initialize agents once and cache them (prevents memory leaks)
+    if not _agent_cache:
+        logger.info("Initializing agent cache...")
+        embed_model = get_shared_embedding_model()
+        _agent_cache['normalizer'] = ClaimNormalizer()
+        _agent_cache['retriever'] = RetrievalAgent(embed_model=embed_model)
+        _agent_cache['reasoner'] = ReasoningAgent()
+        _agent_cache['memory_agent'] = MemoryUpdateAgent(embed_model=embed_model, retriever=_agent_cache['retriever'])
     
-    # Try to initialize web search agent
-    web_search_agent = None
-    try:
-        from src.agents.web_search import WebSearchAgent
-        web_search_agent = WebSearchAgent()
-        logger.info("Web search enabled (Tavily)")
-    except Exception as e:
-        logger.warning(f"Web search disabled: {e}")
+    normalizer = _agent_cache['normalizer']
+    retriever = _agent_cache['retriever']
+    reasoner = _agent_cache['reasoner']
+    memory_agent = _agent_cache['memory_agent']
+    
+    # Cache web search agent too
+    if 'web_search_agent' not in _agent_cache:
+        try:
+            from src.agents.web_search import WebSearchAgent
+            _agent_cache['web_search_agent'] = WebSearchAgent()
+            logger.info("Web search enabled (Tavily)")
+        except Exception as e:
+            logger.warning(f"Web search disabled: {e}")
+            _agent_cache['web_search_agent'] = None
+    
+    web_search_agent = _agent_cache['web_search_agent']
     
     def normalize_node(state: PipelineState) -> PipelineState:
         """Normalize the input claim."""

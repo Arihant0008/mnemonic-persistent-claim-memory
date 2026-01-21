@@ -44,9 +44,14 @@ class RetrievalAgent:
     Implements hybrid search, discovery search, and time-decay boosting.
     """
     
-    def __init__(self):
+    def __init__(self, embed_model=None):
         self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        self.embed_model = TextEmbedding(TEXT_EMBEDDING_MODEL)
+        # Use shared embedding model if provided, otherwise create new one
+        # (for backwards compatibility with standalone scripts)
+        if embed_model is None:
+            from .memory import get_shared_embedding_model
+            embed_model = get_shared_embedding_model()
+        self.embed_model = embed_model
         
         # Truth anchor embeddings for discovery search
         self.truth_anchors = [

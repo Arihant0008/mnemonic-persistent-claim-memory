@@ -9,12 +9,14 @@ from datetime import datetime
 import sys
 import os
 import logging
+import atexit
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.pipeline import create_pipeline
 from src.validation import validate_claim_input, ValidationError
+from src.memory_monitor import log_memory_usage, cleanup_memory, check_memory_limit
 
 # Configure logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -23,6 +25,13 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Request counter for periodic memory cleanup
+_request_counter = 0
+_cleanup_interval = 10  # Cleanup every N requests
+
+# Memory limit configuration (512MB for Render free tier)
+MEMORY_LIMIT_MB = int(os.getenv("MEMORY_LIMIT_MB", "512"))
 
 app = FastAPI(title="Mnemonic API", version="1.0.0")
 
@@ -76,9 +85,35 @@ class VerificationResponse(BaseModel):
 def root():
     return {"message": "Mnemonic API", "status": "online"}
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint with memory stats."""
+    from src.memory_monitor import get_memory_usage
+    usage = get_memory_usage()
+    return {
+        "status": "healthy",
+        "memory_mb": round(usage["rss_mb"], 2),
+        "memory_percent": round(usage["percent"], 2),
+        "memory_limit_mb": MEMORY_LIMIT_MB
+    }
+
 @app.post("/verify")
 async def verify_claim(request: ClaimRequest, req: Request):
     """Verify a claim through the multi-agent pipeline."""
+    global _request_counter
+    _request_counter += 1
+    
+    # Periodic memory cleanup
+    if _request_counter % _cleanup_interval == 0:
+        logger.info(f"Periodic cleanup at request #{_request_counter}")
+        cleanup_memory()
+        log_memory_usage(f"after request #{_request_counter}")
+    
+    # Check memory limits
+    if not check_memory_limit(max_mb=MEMORY_LIMIT_MB):
+        logger.error("Memory limit exceeded, forcing cleanup")
+        cleanup_memory()
+    
     # Apply rate limiting if available
     if limiter:
         try:
@@ -163,8 +198,16 @@ async def verify_claim(request: ClaimRequest, req: Request):
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Log initial memory state
+    log_memory_usage("startup")
+    
+    # Register cleanup on exit
+    atexit.register(cleanup_memory)
+    
     logger.info("🚀 Starting Mnemonic API Server...")
     logger.info("📡 Backend: http://localhost:8000")
     logger.info("🔍 Frontend: http://localhost:3000")
     logger.info("📚 Docs: http://localhost:8000/docs")
+    logger.info(f"💾 Memory limit: {MEMORY_LIMIT_MB}MB")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level=LOG_LEVEL.lower())
