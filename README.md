@@ -266,4 +266,4 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with:** FastAPI · Next.js · Groq · Qdrant · LangGraph · Tavily
+**Built with:** FastAPI · Next.js · Groq · Qdrant · LangGraph · Tavily ·
